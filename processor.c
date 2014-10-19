@@ -1,20 +1,27 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
 #define SHMSIZE 1024
 
-// Setup Shared Memory
-char* setupSharedMemory(void)
+int main()
 {
-    int shmid;
-    key_t key;
-    char *shm;
-    
-    // We need to get the segment with key "2727", created by receiver.c
-    key = 2727;
+	key_t key;
+	int shmid;
+	int cnt;
+	int infinite_loop = 1;
+    char *shm, *s;
+    char line[BUFSIZ];
+    FILE * digits;
+
+    digits = fopen ("digits.out","w");
+
+    // We need to get the segment with key equal to the user ID, which was created by receiver.c
+    key = getuid();
     
     // Locate the segment
     shmid = shmget(key, SHMSIZE, 0666);
@@ -22,7 +29,7 @@ char* setupSharedMemory(void)
     // Raise error if segment isn't located
     if (shmid < 0) {
         perror("shmget failed: shared memory segment wasn't created");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     
     // Attach the segment to data space
@@ -31,32 +38,40 @@ char* setupSharedMemory(void)
     // Raise error if segment isn't attached
     if (shm == (char *) -1) {
         perror("shmat failed: segment wasn't attached to data space");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
-    return shm;
-}
+    while (infinite_loop) {
+    	if (*shm != '@') {
 
+    		cnt = 0;
 
-int main()
-{
-    char *shm, *s;
-    
-    shm = setupSharedMemory();
+		    for (s = shm; *s != '$'; s++) {
+		        line[cnt] = *s;
+		        cnt++;
+		    }
 
-    /*
-     * Now read what the server put in the memory.
-     */
-    for (s = shm; *s != 0; s++)
-        putchar(*s);
-    putchar('\n');
-    
-    /*
-     * Finally, change the first character of the
-     * segment to '*', indicating we have read
-     * the segment.
-     */
-    *shm = '*';
-    
-    exit(0);
+		    if (strncmp(line, "quit", 4) == 0) {
+            	infinite_loop = 0;
+        	}
+
+		    *shm = '@';
+
+		    // printf("%s\n", line);
+		    
+		    digits = fopen ("digits.out","a");
+
+		    if (digits != NULL)
+			{
+				fprintf(digits, "%d: ", cnt-1);
+				fputs(line, digits);
+				fclose(digits);
+			}
+		}
+	}
+
+	if (shmdt(shm) == -1) {
+	    perror("shmdt failed: segment wasn't dettached from data space");
+	    exit(1);
+	}
 }

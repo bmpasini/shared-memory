@@ -1,0 +1,67 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+
+#define SHMSIZ 1024
+
+int main(void)
+{
+	key_t key;
+    int shmid, shmsiz;
+    char *shm, *s, c;
+    char *user_input = malloc(sizeof(char)*BUFSIZ);
+
+    while (1) {
+
+	    printf("Enter an alpha numeric string: ");
+	    fgets(user_input, sizeof(user_input), stdin);
+
+	    shmsiz = sizeof(user_input);
+	    
+	    // The key of the shared memory segment will be "2727"
+	    key = 2727;
+	    
+	    // Creation of shared memory segment
+	    shmid = shmget(key, shmsiz, IPC_CREAT | 0666);
+
+	    // Raise error if segment isn't created
+	    if (shmid < 0) {
+	        perror("shmget failed: shared memory segment wasn't created");
+	        exit(1);
+	    }
+	    
+	    // Attach the segment to data space
+	    shm = shmat(shmid, NULL, 0);
+
+	    // Raise error if segment isn't attached
+	    if (shm == (char *) -1) {
+	        perror("shmat failed: segment wasn't attached to data space");
+	        exit(1);
+	    }
+
+	    s = shm;
+        s += strlen(user_input);
+        *s = 0;
+
+        memcpy(shm, user_input, strlen(user_input));
+
+        while (*shm != '*')
+            sleep(1);
+
+        if (shmdt(shm) == -1) {
+	        perror("shmdt failed: segment wasn't dettached from data space");
+	        exit(1);
+	    }
+
+	    if (shmctl(shmid, IPC_RMID, 0) == -1) {
+	        perror("shmctl failed: ipc wasn't cleared");
+	        exit(1);
+	    }
+	}
+}
+
+        

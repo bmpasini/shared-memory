@@ -8,23 +8,24 @@
 
 #define SHMSIZ 1024
 
-// Setup Shared Memory
-char* setupSharedMemory(int shmsiz)
+int main(void)
 {
+	key_t key;
     int shmid;
-    key_t key;
-    char *shm;
-    
-    // The key of the shared memory segment will be "2727"
-    key = 2727;
+    int infinite_loop = 1;
+    char *shm, *s, c;
+    char *user_input = malloc(sizeof(char)*BUFSIZ);
+
+    // The key of the shared memory segment will be the user ID
+    key = getuid();
     
     // Creation of shared memory segment
-    shmid = shmget(key, shmsiz, IPC_CREAT | 0666);
+    shmid = shmget(key, SHMSIZ, IPC_CREAT | 0666);
 
     // Raise error if segment isn't created
     if (shmid < 0) {
         perror("shmget failed: shared memory segment wasn't created");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     
     // Attach the segment to data space
@@ -33,63 +34,35 @@ char* setupSharedMemory(int shmsiz)
     // Raise error if segment isn't attached
     if (shm == (char *) -1) {
         perror("shmat failed: segment wasn't attached to data space");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
-    return shm;
-}
+    while (infinite_loop) {
 
-void endSharedMemory(char *shm, int shmsiz)
-{
-    int key = 2727;
+	    printf("Enter an alpha numeric string: ");
+	    fgets(user_input, BUFSIZ, stdin);
 
-    if (shmdt(shm) == -1) {
-        perror("shmdt failed: segment wasn't dettached from data space");
-        exit(1);
-    }
-
-    if (shmctl(shmget(key, shmsiz, 0666), IPC_RMID, 0) == -1) {
-        perror("shmctl failed: ipc wasn't cleared");
-        exit(1);
-    }
-}
-
-char* getUserInput(void)
-{
-    char *str = malloc(sizeof(char)*BUFSIZ);
-
-    printf("Enter an alpha numeric string: ");
-    fgets(str, sizeof(str), stdin);
-
-    return str;
-}
-
-int main(void)
-{
-    int user_input_size;
-    char *shm, *s, c;
-    char *user_input = malloc(sizeof(char)*BUFSIZ);
-
-    // shm = setupSharedMemory(SHMSIZ);
-
-    while (1) {
-        strcpy(user_input, getUserInput());
-        user_input_size = sizeof(user_input);
-
-        shm = setupSharedMemory(user_input_size);
-
-        // printf("%lu\n", strlen(user_input));
-
-        s = shm;
-        s += strlen(user_input);
-        *s = 0;
+	    if (strncmp(user_input, "quit", 4) == 0) {
+            infinite_loop = 0;
+        }
 
         memcpy(shm, user_input, strlen(user_input));
 
-        while (*shm != '*')
-            sleep(1);
+	    s = shm;
+        s += strlen(user_input);
+        *s = '$';
 
-        endSharedMemory(shm, user_input_size);
-    }
-    
+        while (*shm != '@')
+            sleep(1);
+	}
+
+	if (shmdt(shm) == -1) {
+	    perror("shmdt failed: segment wasn't dettached from data space");
+	    exit(1);
+	}
+
+	if (shmctl(shmid, IPC_RMID, 0) == -1) {
+	    perror("shmctl failed: ipc wasn't cleared");
+	    exit(1);
+	}
 }
