@@ -45,6 +45,7 @@ int main()
     	if (*shm != '@') {
 
     		cnt = 0;
+    		memset(line, 0, sizeof(line));
 
 		    for (s = shm; *s != '$'; s++) {
 		        line[cnt] = *s;
