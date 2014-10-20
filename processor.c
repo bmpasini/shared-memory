@@ -60,36 +60,40 @@ int main(void)
 
 	while (infinite_loop) {
 
-		// Program waits for user input, which is begins with an '@' while there is no new input
-		if (*shm != '@') {
+		// Program waits for user input so that it can run properly
+		if (*shm != (int) NULL) {
 
-			// Digits counter is set to zero and the line input string is emptied for being able to receive new input values
-			cnt = 0;
-			memset(line, 0, sizeof(line));
+			// *shm begins with an '@' while there is no new input. Thus, the program has to wait for a new input
+			if (*shm != '@') {
 
-			// The string received through shared memory is passed into a line characters array, and also it counts the number of characters in the input string
-			for (s = shm; *s != '$'; s++) {
-				line[cnt] = *s;
-				cnt++;
-			}
+				// Digits counter is set to zero and the line input string is emptied for being able to receive new input values
+				cnt = 0;
+				memset(line, 0, sizeof(line));
 
-			// If the input string is "quit" the infinite loop is interrupted, so that the shared memory segment can be dettached
-			if (strncmp(line, "quit", 4) == 0) {
-				infinite_loop = 0;
-			}
+				// The string received through shared memory is passed into a line characters array, and also it counts the number of characters in the input string
+				for (s = shm; *s != '$'; s++) {
+					line[cnt] = *s;
+					cnt++;
+				}
 
-			// The program signalizes it has finished reading the input string by inserting an '@' symbol to the memory address shm is pointing to (the beginning of the shared memory string). Thus, receiver.c can ask the user for a new input and also, process.c is signalized to wait for the new input before writing it into the output file
-			*shm = '@';
-			
-			// The 'digits.out' file is opened so that new text can be appended into it
-			digits = fopen ("digits.out","a");
+				// If the input string is "quit" the infinite loop is interrupted, so that the shared memory segment can be dettached
+				if (strncmp(line, "quit", 4) == 0) {
+					infinite_loop = 0;
+				}
 
-			// The number of characters in the input string is written in the output 'digits.out' file, along with the input string. Also, the output file is closed
-			if (digits != NULL)
-			{
-				fprintf(digits, "%d: ", cnt-1);
-				fputs(line, digits);
-				fclose(digits);
+				// The program signalizes it has finished reading the input string by inserting an '@' symbol to the memory address shm is pointing to (the beginning of the shared memory string). Thus, receiver.c can ask the user for a new input and also, process.c is signalized to wait for the new input before writing it into the output file
+				*shm = '@';
+				
+				// The 'digits.out' file is opened so that new text can be appended into it
+				digits = fopen ("digits.out","a");
+
+				// The number of characters in the input string is written in the output 'digits.out' file, along with the input string. Also, the output file is closed
+				if (digits != NULL)
+				{
+					fprintf(digits, "%d: ", cnt-1);
+					fputs(line, digits);
+					fclose(digits);
+				}
 			}
 		}
 	}
